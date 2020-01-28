@@ -40,7 +40,10 @@
     NSDictionary* options = [command.arguments objectAtIndex:0];
     
     NSString* text = [options objectForKey:@"text"];
+    // setting id trumps locale setting
     NSString* locale = [options objectForKey:@"locale"];
+    NSString* ident = [options objectForKey:@"id"];
+
     double rate = [[options objectForKey:@"rate"] doubleValue];
     NSString* category = [options objectForKey:@"category"];
     
@@ -81,7 +84,11 @@
     }
     
     AVSpeechUtterance* utterance = [[AVSpeechUtterance new] initWithString:text];
-    utterance.voice = [AVSpeechSynthesisVoice voiceWithLanguage:locale];
+    if(ident) {
+        utterance.voice = [AVSpeechSynthesisVoice voiceWithIdentifier:ident];
+    } else {
+        utterance.voice = [AVSpeechSynthesisVoice voiceWithLanguage:locale];
+    }
     // Rate expression adjusted manually for a closer match to other platform.
     utterance.rate = (AVSpeechUtteranceMinimumSpeechRate * 1.5 + AVSpeechUtteranceDefaultSpeechRate) / 2.25 * rate * rate;
     // workaround for https://github.com/vilic/cordova-plugin-tts/issues/21
@@ -101,9 +108,13 @@
 - (void)checkLanguage:(CDVInvokedUrlCommand *)command {
     NSArray *voices = [AVSpeechSynthesisVoice speechVoices];
     NSString *languages = @"";
+    // Now returns both language code and voice id (which, incidentally, matches speechSynthesis.getVoices()[idx].voiceURI
+    // separated by a colon
     for (id voiceName in voices) {
         languages = [languages stringByAppendingString:@","];
         languages = [languages stringByAppendingString:[voiceName valueForKey:@"language"]];
+        languages = [languages stringByAppendingString:@":"];
+        languages = [languages stringByAppendingString:[voiceName valueForKey:@"identifier"]];
     }
     if ([languages hasPrefix:@","] && [languages length] > 1) {
         languages = [languages substringFromIndex:1];
